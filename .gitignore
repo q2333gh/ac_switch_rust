@@ -3,6 +3,8 @@ target/
 
 # Cargo metadata that should stay local
 .cargo/
+.cargo-local/
+.tools/
 *.rs.bk
 
 # Editor and IDE files
@@ -37,4 +39,3 @@ Desktop.ini
 *.log
 *.tmp
 *.temp
-

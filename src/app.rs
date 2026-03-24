@@ -1,9 +1,14 @@
+//! Application-level orchestration for the three supported commands.
+//!
+//! This layer owns the sequencing rules that matter for account switching:
+//! validate paths, shut Steam down, mutate registry/VDF state, then relaunch Steam.
+
 use crate::error::Result;
 use crate::loginusers_vdf::LoginUsersVdf;
 use crate::process_control::ProcessController;
 use crate::steam::{
-    resolve_launch_paths, resolve_steam_paths, sort_accounts, AccountSelector, PathOverrides, StartMode,
-    SteamAccount,
+    resolve_launch_paths, resolve_steam_paths, sort_accounts, AccountSelector, PathOverrides,
+    StartMode, SteamAccount,
 };
 use crate::windows_registry::RegistryStore;
 use anyhow::{anyhow, bail, Context};
@@ -51,14 +56,18 @@ impl FileStore for RealFileStore {
         let temp_path = parent.join(format!("{file_name}.{nonce}.tmp"));
 
         let write_result = (|| -> Result<()> {
-            let mut file = File::create(&temp_path)
-                .with_context(|| format!("Failed to create temporary file {}", temp_path.display()))?;
-            file.write_all(contents.as_bytes())
-                .with_context(|| format!("Failed to write temporary file {}", temp_path.display()))?;
-            file.flush()
-                .with_context(|| format!("Failed to flush temporary file {}", temp_path.display()))?;
-            file.sync_all()
-                .with_context(|| format!("Failed to sync temporary file {}", temp_path.display()))?;
+            let mut file = File::create(&temp_path).with_context(|| {
+                format!("Failed to create temporary file {}", temp_path.display())
+            })?;
+            file.write_all(contents.as_bytes()).with_context(|| {
+                format!("Failed to write temporary file {}", temp_path.display())
+            })?;
+            file.flush().with_context(|| {
+                format!("Failed to flush temporary file {}", temp_path.display())
+            })?;
+            file.sync_all().with_context(|| {
+                format!("Failed to sync temporary file {}", temp_path.display())
+            })?;
             replace_file(&temp_path, path)?;
             Ok(())
         })();
@@ -137,7 +146,11 @@ where
         Ok(())
     }
 
-    pub fn start(&mut self, overrides: PathOverrides, request: StartRequest) -> Result<SteamAccount> {
+    pub fn start(
+        &mut self,
+        overrides: PathOverrides,
+        request: StartRequest,
+    ) -> Result<SteamAccount> {
         let paths = resolve_steam_paths(&overrides, &self.registry)?;
         validate_existing_dir(&paths.steam_dir, "SteamPath")?;
         validate_existing_file(&paths.steam_exe, "SteamExe")?;
@@ -167,7 +180,8 @@ where
 
         let content = self.files.read_to_string(&paths.loginusers_vdf)?;
         let mut vdf = LoginUsersVdf::parse(&content)?;
-        let updated = vdf.set_active_account(&request.selector, request.mode, &target.account_name)?;
+        let updated =
+            vdf.set_active_account(&request.selector, request.mode, &target.account_name)?;
         self.files
             .write_atomic_string(&paths.loginusers_vdf, &vdf.render())?;
         self.registry.write_auto_login_user(&target.account_name)?;
@@ -386,7 +400,10 @@ mod tests {
     fn build_app(
         auto_login_user: Option<&str>,
         include_vdf: bool,
-    ) -> (App<MockRegistry, MockProcessController, MockFileStore>, PathBuf) {
+    ) -> (
+        App<MockRegistry, MockProcessController, MockFileStore>,
+        PathBuf,
+    ) {
         let steam_dir = std::env::temp_dir();
         let steam_exe = std::env::current_exe().expect("test host exe should exist");
         let loginusers = steam_dir.join("config").join("loginusers.vdf");
@@ -400,10 +417,15 @@ mod tests {
 
         let mut files = MockFileStore::default();
         if include_vdf {
-            files.files.insert(loginusers.clone(), MULTI_USER.to_owned());
+            files
+                .files
+                .insert(loginusers.clone(), MULTI_USER.to_owned());
         }
 
-        (App::new(registry, MockProcessController::default(), files), loginusers)
+        (
+            App::new(registry, MockProcessController::default(), files),
+            loginusers,
+        )
     }
 
     #[test]
@@ -513,7 +535,10 @@ mod tests {
         app.login_new(PathOverrides::default())
             .expect("login-new should succeed");
 
-        assert_eq!(app.processes.log, vec![format!("launch:{}", steam_exe.display())]);
+        assert_eq!(
+            app.processes.log,
+            vec![format!("launch:{}", steam_exe.display())]
+        );
         assert_eq!(app.registry.writes, vec![String::new()]);
     }
 
@@ -521,7 +546,9 @@ mod tests {
     fn refresh_sorts_accounts_and_marks_auto_login_user() {
         let (app, _) = build_app(Some("alpha_user"), true);
 
-        let accounts = app.refresh(PathOverrides::default()).expect("refresh should succeed");
+        let accounts = app
+            .refresh(PathOverrides::default())
+            .expect("refresh should succeed");
 
         assert_eq!(accounts.len(), 2);
         assert_eq!(accounts[0].account_name, "alpha_user");
@@ -534,7 +561,9 @@ mod tests {
     fn refresh_returns_empty_when_loginusers_vdf_is_missing() {
         let (app, _) = build_app(Some("alpha_user"), false);
 
-        let accounts = app.refresh(PathOverrides::default()).expect("refresh should succeed");
+        let accounts = app
+            .refresh(PathOverrides::default())
+            .expect("refresh should succeed");
 
         assert!(accounts.is_empty());
     }
@@ -558,9 +587,23 @@ mod tests {
         assert_eq!(
             app.processes.log,
             vec![
-                format!("shutdown:{}", app.registry.steam_exe.as_ref().expect("steam exe").display()),
+                format!(
+                    "shutdown:{}",
+                    app.registry
+                        .steam_exe
+                        .as_ref()
+                        .expect("steam exe")
+                        .display()
+                ),
                 String::from("force_kill"),
-                format!("launch:{}", app.registry.steam_exe.as_ref().expect("steam exe").display()),
+                format!(
+                    "launch:{}",
+                    app.registry
+                        .steam_exe
+                        .as_ref()
+                        .expect("steam exe")
+                        .display()
+                ),
             ]
         );
         assert_eq!(app.registry.writes, vec!["alpha_user".to_owned()]);
@@ -587,7 +630,14 @@ mod tests {
         assert_eq!(
             app.processes.log,
             vec![
-                format!("shutdown:{}", app.registry.steam_exe.as_ref().expect("steam exe").display()),
+                format!(
+                    "shutdown:{}",
+                    app.registry
+                        .steam_exe
+                        .as_ref()
+                        .expect("steam exe")
+                        .display()
+                ),
                 String::from("force_kill"),
             ]
         );

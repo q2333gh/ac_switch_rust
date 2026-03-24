@@ -1,3 +1,5 @@
+//! Windows Steam process discovery, shutdown, kill, and restart helpers.
+
 use crate::error::Result;
 use anyhow::{bail, Context};
 use std::collections::HashSet;

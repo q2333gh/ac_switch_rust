@@ -1,3 +1,8 @@
+//! Domain model and path resolution rules for local Steam account switching.
+//!
+//! This module keeps the first-principles rules that are independent from the CLI transport:
+//! account identity, sort order, timestamp formatting, and registry override precedence.
+
 use crate::error::Result;
 use crate::windows_registry::RegistryStore;
 use anyhow::Context;
@@ -161,7 +166,10 @@ mod tests {
         let resolved = resolve_steam_paths(&overrides, &registry).expect("paths should resolve");
 
         assert_eq!(resolved.steam_dir, PathBuf::from(r"D:\CustomSteam"));
-        assert_eq!(resolved.steam_exe, PathBuf::from(r"D:\CustomSteam\steam.exe"));
+        assert_eq!(
+            resolved.steam_exe,
+            PathBuf::from(r"D:\CustomSteam\steam.exe")
+        );
         assert_eq!(
             resolved.loginusers_vdf,
             PathBuf::from(r"D:\CustomSteam\config\loginusers.vdf")
@@ -179,6 +187,9 @@ mod tests {
             .expect("paths should resolve");
 
         assert_eq!(resolved.steam_dir, PathBuf::from(r"C:\RegistrySteam"));
-        assert_eq!(resolved.steam_exe, PathBuf::from(r"C:\RegistrySteam\steam.exe"));
+        assert_eq!(
+            resolved.steam_exe,
+            PathBuf::from(r"C:\RegistrySteam\steam.exe")
+        );
     }
 }

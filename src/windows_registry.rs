@@ -1,3 +1,5 @@
+//! Windows registry access for Steam installation paths and `AutoLoginUser`.
+
 use crate::error::Result;
 use anyhow::Context;
 use std::io::ErrorKind;
@@ -41,8 +43,9 @@ impl WindowsRegistry {
             Ok(value) if value.trim().is_empty() => Ok(None),
             Ok(value) => Ok(Some(value)),
             Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-            Err(error) => Err(error)
-                .with_context(|| format!("Failed to read registry value {STEAM_REGISTRY_PATH}\\{value_name}")),
+            Err(error) => Err(error).with_context(|| {
+                format!("Failed to read registry value {STEAM_REGISTRY_PATH}\\{value_name}")
+            }),
         }
     }
 }
@@ -65,8 +68,9 @@ impl RegistryStore for WindowsRegistry {
         let (key, _) = hkcu
             .create_subkey(STEAM_REGISTRY_PATH)
             .with_context(|| format!("Failed to create registry key {STEAM_REGISTRY_PATH}"))?;
-        key.set_value("AutoLoginUser", &value)
-            .with_context(|| format!("Failed to write registry value {STEAM_REGISTRY_PATH}\\AutoLoginUser"))?;
+        key.set_value("AutoLoginUser", &value).with_context(|| {
+            format!("Failed to write registry value {STEAM_REGISTRY_PATH}\\AutoLoginUser")
+        })?;
         Ok(())
     }
 }

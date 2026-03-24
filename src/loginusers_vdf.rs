@@ -1,3 +1,8 @@
+//! Minimal `loginusers.vdf` parser and writer for Steam account switching.
+//!
+//! The implementation intentionally supports only the subset needed by this CLI while preserving
+//! unknown fields and user ordering on write-back.
+
 use crate::error::Result;
 use crate::steam::{format_timestamp, AccountSelector, StartMode, SteamAccount};
 use anyhow::{anyhow, bail, Context};
@@ -124,7 +129,10 @@ impl LoginUsersVdf {
     }
 }
 
-fn account_from_entry(entry: &VdfEntry, auto_login_user: Option<&str>) -> Result<Option<SteamAccount>> {
+fn account_from_entry(
+    entry: &VdfEntry,
+    auto_login_user: Option<&str>,
+) -> Result<Option<SteamAccount>> {
     let VdfValue::Object(user) = &entry.value else {
         return Ok(None);
     };
@@ -334,7 +342,11 @@ impl<'a> Parser<'a> {
                 self.position += 1;
                 Ok(())
             }
-            Some(value) => bail!("Expected byte {:?}, found {:?}", expected as char, value as char),
+            Some(value) => bail!(
+                "Expected byte {:?}, found {:?}",
+                expected as char,
+                value as char
+            ),
             None => bail!("Unexpected end of file"),
         }
     }
@@ -362,7 +374,9 @@ mod tests {
     #[test]
     fn parses_mixed_case_loginusers() {
         let vdf = LoginUsersVdf::parse(MULTI_USER).expect("fixture should parse");
-        let accounts = vdf.accounts(Some("alpha_user")).expect("accounts should parse");
+        let accounts = vdf
+            .accounts(Some("alpha_user"))
+            .expect("accounts should parse");
 
         assert_eq!(accounts.len(), 2);
         assert_eq!(accounts[0].steam_id64, 76561198000000001);
@@ -402,7 +416,9 @@ mod tests {
     #[test]
     fn parses_utf8_bom_fixture() {
         let vdf = LoginUsersVdf::parse(OFFLINE_USER).expect("bom fixture should parse");
-        let accounts = vdf.accounts(Some("gamma_user")).expect("accounts should parse");
+        let accounts = vdf
+            .accounts(Some("gamma_user"))
+            .expect("accounts should parse");
 
         assert_eq!(accounts.len(), 1);
         assert_eq!(accounts[0].account_name, "gamma_user");
