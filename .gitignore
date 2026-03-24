@@ -1,0 +1,40 @@
+# Rust build output
+target/
+
+# Cargo metadata that should stay local
+.cargo/
+*.rs.bk
+
+# Editor and IDE files
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Windows / Visual Studio build artifacts
+*.pdb
+*.ilk
+*.obj
+*.exe
+*.dll
+*.lib
+*.exp
+*.manifest
+*.idb
+*.tlog
+*.ipdb
+*.iobj
+*.lastbuildstate
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+
